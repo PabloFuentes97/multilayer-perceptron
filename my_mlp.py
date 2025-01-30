@@ -1,10 +1,57 @@
 import numpy as np
 
-class MultilayerPerceptron:
+class Sequential:
     def __init__(self, layers):
         #red como lista de capas
         self.layers = layers
+        self.stop_training = False
+
+        '''
+        for idx, layer in self.layers:
+            if idx > 0:
+        '''        
         
+    def compile(self, loss, optimizer):
+        self.loss = loss
+        self.loss.net = self
+        self.optimizer = optimizer
+        self.optimizer.net = self
+    
+    def fit(self, X, y, epochs, batch_size=32):
+        
+        loss_history = []
+        m, n = X.shape
+        
+        for epoch in range(epochs):
+        #for _ in range(batches):
+            batch_idx = np.random.randint(m, size=batch_size)
+            X_batch = X[batch_idx]
+            y_batch = y[batch_idx]
+            y_pred = self.forward(X_batch)
+            j = self.loss(y_pred, y_batch)
+            self.loss.backward()
+            self.optimizer.update(epoch)
+            
+            '''
+            # Check for improvement
+            if j < best_loss - min_delta:
+                best_loss = j
+                patience_counter = 0
+            else:
+                patience_counter += 1
+                if patience_counter >= patience:
+                    print(f"Early stopping at epoch {epoch}")
+                    break
+                
+            if epoch % 10 == 0:
+                print(f"Epoch {epoch} |", "Loss:", j)
+            '''
+            loss_history.append(j)
+            
+        return {
+            "loss": loss_history
+                }
+    
     def forward(self, X):
         #calcular salida del modelo aplicando cada capa secuencialmente
         for layer in self.layers:
@@ -17,15 +64,19 @@ class MultilayerPerceptron:
     
     def summary(self):
         for idx, layer in enumerate(self.layers):
-            print(f"Layer {idx}: Weights: {layer.weights.shape}, bias: 1, Output shape: (None, {layer.weights.shape[1]})")
+            print(f"Layer {idx}: Weights: {layer.weights.shape}, bias: 1, Output shape: (None, {layer.weights.shape[1]}), name: {layer.name}")
 
+    def predict(self, X):
+        return self.forward(X)
+    
 class Layer:
-    def __init__(self, d_in, d_out):
-        self.weights = np.zeros(shape=(d_in, d_out))
+    def __init__(self, d_in, d_out, name=None):
+        self.weights = np.random.randn(d_in, d_out) * 0.01
         #self.bias = np.zeros(d_in)
         self.bias = 0
         self.params = [] #lo que tiene que actualizar el optimizador
         self.grads = []
+        self.name = name
         
     def forward(self, X):
         #calcular suma
@@ -59,14 +110,44 @@ def sigmoid_deriv(z):
     return sig * (1 - sig)
 
 
-class Sigmoid:
+class Linear(Layer):        
+    def forward(self, X):
+        """
+        Realiza la propagación hacia adelante.
+        X: entrada de la capa (batch_size, d_in)
+        """
+        self.X = X
+        self.z = np.dot(X, self.weights) + self.bias  # Suma ponderada
+        return self.z
+
+    def backward(self, grad_output):
+        """
+        Realiza la propagación hacia atrás.
+        grad_output: gradiente del coste respecto a la salida de esta capa
+        """
+
+        # Gradientes de los parámetros
+        self.dw = np.dot(self.X.T, grad_output)  # dC/dw = dC/dz * dz/dw
+        self.db = np.sum(grad_output, axis=0)    # dC/db = dC/dz * dz/db
+        self.grads = [self.dw, self.db]
+
+        # Gradiente para las entradas (para la capa anterior)
+        grad_input = np.dot(grad_output, self.weights.T)  # dC/dX = dC/dz * dz/dX
+        return grad_input
+    
+    def update(self, w, b):
+        self.weights -= w
+        self.bias -= b
+    
+class Sigmoid(Layer):
+    '''
     def __init__(self, d_in, d_out):
         # Inicializar pesos, bias, y caches
         self.weights = np.random.randn(d_in, d_out) * 0.01
         self.bias = np.zeros(d_out)
         self.params = [self.weights, self.bias]  # Referencia para optimizadores
         self.grads = []  # Gradientes que actualizará el optimizador
-
+    '''
     def forward(self, X):
         """
         Realiza la propagación hacia adelante.
@@ -83,7 +164,7 @@ class Sigmoid:
         grad_output: gradiente del coste respecto a la salida de esta capa
         """
         # Gradiente local de la función Sigmoid
-        sigmoid_grad = self.a * (1 - self.a)  # \sigma'(z)
+        sigmoid_grad = self.a * (1 - self.a)  # \sigma'(z) -> a es la sigmoide de z, la guardo para evitar calcularla de nuevo
 
         # Gradiente total respecto a z
         grad_z = grad_output * sigmoid_grad  # dC/dz = dC/da * da/dz
@@ -95,88 +176,30 @@ class Sigmoid:
 
         # Gradiente para las entradas (para la capa anterior)
         grad_input = np.dot(grad_z, self.weights.T)  # dC/dX = dC/dz * dz/dX
+
         return grad_input
+    
+    def update(self, w, b):
+        self.weights -= w
+        self.bias -= b
 
-'''
-class Sigmoid(Layer):        
-    def forward(self, X):
-        
-        self.weights = np.zeros(shape=(d_in, d_out))
-        self.bias = np.zeros(d_in)
-        self.params = [] #lo que tiene que actualizar el optimizador
-        self.grads = []
-        self.local_grads = []
-        
-        print("Forward prop, layer sigmoid")
-        
-        self.X = X
-        self.params = [self.weights, self.bias]
-        #en el forward, hay que guardar cualquier cálculo o valor intermedio que sea necesario luego para el backward
-        #-> se cachea en la memoria para acceder/consumir a ello during backpropagation
-        #self.params = [self.w, self.b]
-        z = np.dot(X, self.weights) + self.bias #suma ponderada -> pesos * x; el cell body sum
-        self.z = z
-        a = sigmoid(z) #aplicar sigmoid sobre suma ponderada -> función de activación -> el firing rate
-        
-        return a #devuelvo resultado de función de activación
-      
-    def backward(self, grad_output):
-        #calcular cuánto influyen las entradas en el output -> 
-        # perceptrón tiene dos pasos ->
-        # 1) z = suma ponderada -> mx + b -> derivadas parciales de z respecto a m y b
-        # a) dz / dm = x
-        # b) dz / db = 1
-        # 2) A = función de activación sigmoid(z) -> toma como input z -> derivada de sigmoid respecto a z ->
-        # dA / dz = A * (1 - A)
-        #regla de la cadena -> 
-        #gradiente de los pesos -> dA/dw = dA/dz * dz/dw
-        #gradiente de las bias -> dA/db = dA/dz * dz/db
-        
-        
-        grad = sigmoid(self.z) * (1 - sigmoid(self.z)) * grad_output #derivada parcial de función de activación sigmoid -> gradiente local -> cuánto influyen mis entradas en mi output
 
-        #gradientes locales -> cuánto influyen las entradas en el resultado de la función de activación
-        self.dw = grad * self.X
-        self.db = grad
-        
-        self.grads = [self.dw, self.db]
-        return grad  #gradiente local * gradiente "global" de capas posteriores -> cuánto ha influido mi output en el resultado/coste final
-'''
-
-def softmax(z):
+def softmax(x):
+    z = x - np.max(x, axis=-1, keepdims=True)
     logits = np.exp(z)
     return logits / np.sum(logits)
 
-'''def softmax_derivative(output):
-    """
-    Calcula la matriz Jacobiana de la función softmax para matrices y vectores.
-    
-    Si `output` es un vector, devuelve un Jacobiano de nxn.
-    Si `output` es una matriz (batch_size x n), devuelve un array (batch_size x n x n).
-    """
-    if output.ndim == 1:  # Caso de un solo ejemplo (vector)
-        n = output.shape[0]
-        jacobian = np.diag(output) - np.outer(output, output)
-    elif output.ndim == 2:  # Caso de batch (matriz)
-        batch_size, n = output.shape
-        jacobian = np.zeros((batch_size, n, n))
-        for b in range(batch_size):
-            out = output[b]
-            jacobian[b] = np.diag(out) - np.outer(out, out)
-    else:
-        raise ValueError("Output debe ser un vector o una matriz.")
-    return jacobian'''
-
-class Softmax(Layer):
+class Softmax(Layer): #as output layer with cross-entropy loss
     def forward(self, X):
         #weighted sum
         self.X = X
         epsilon = 1e-5
         self.params = [self.weights, self.bias]
-        self.z = np.dot(X, self.weights) + self.bias
+        #self.z = np.dot(X, self.weights) + self.bias
         #activation function -> softmax
-        tmp = np.exp(self.z)
-        self.output = tmp / np.sum(tmp) + epsilon
+        exp_logits = np.exp(self.X - np.max(self.X, axis=-1, keepdims=True))  # Estabilidad numérica
+        self.output = exp_logits / np.sum(exp_logits, axis=-1, keepdims=True)
+    
         return self.output
     
     
@@ -184,14 +207,26 @@ class Softmax(Layer):
         '''
         n = np.size(self.output)
         tmp = np.tile(self.output, n)'''
+        #grad = y_pred - output_gradient
+        '''
         
-        grad = np.dot(softmax_derivative(self.output), output_gradient)
+        grad = output_gradient
         self.dw = np.dot(self.X.T, grad)
         self.db = np.sum(grad, axis=0, keepdims=True)
-        self.grads = [self.dw, self.db]
+        self.grads = (self.dw, self.db)
         grad_input = np.dot(grad, self.weights.T)  # dC/dX = dC/dz * dz/dX
-        return grad_input
-
+        return grad_input'''
+        self.dw = 0
+        self.db = 0
+        '''
+        batch_size = output_gradient.shape[0]
+        grad = (self.output - output_gradient) / batch_size
+        grad_input = np.dot(grad, self.weights.T)
+        return grad_input'''
+        return output_gradient
+    
+    def update(self, w, b):
+        return 
 
 #estructura loss es la que al final del forward, calcula el coste final, y realiza backpropagation
 class Loss():
@@ -204,19 +239,20 @@ class Loss():
         #BACKPROPAGATION
         for layer in reversed(self.net.layers):
             grad = layer.backward(grad)
+    
 
 class BinaryCrossEntropy(Loss):
     def __call__(self, output, target):
         self.output, self.target = output, target.reshape(output.shape)
-        loss = - np.mean(self.target * np.log(self.output) - (1 - self.target) * np.log(1 - self.output))
-        return loss.mean()
+        loss = - np.mean(self.target * np.log(self.output + 1e-15) - (1 - self.target) * np.log(1 - self.output + 1e-15))
+        return loss
     
     def grad_loss(self): #derivada de funcion de coste
         return self.output - self.target
 
 class CategoricalCrossEntropy(Loss):
     def __call__(self, y_pred, y_true):
-        self.output, self.target = y_pred, y_true.reshape(y_pred.shape)
+        self.output, self.target = y_pred, y_true#.reshape(y_pred.shape)
         """
         Calcula la pérdida categorical cross-entropy.
         Args:
@@ -231,75 +267,105 @@ class CategoricalCrossEntropy(Loss):
         return self.output - self.target
     
 #clase optimizer es la que después de calcular los gradientes y la pérdida con la clase loss, actualiza los parámetros a partir de los gradientes
-def binary_cross_entropy(y_true, y_pred):
-    
-    return -np.mean(y_true * np.log(y_pred) + (1 - y_true) * np.log(1 - y_pred))
-
-def softmax(logits):
-    """
-    Calcula el softmax de un vector de logits.
-    Args:
-        logits (np.ndarray): Vector de logits (tamaño N).
-    Returns:
-        np.ndarray: Vector de probabilidades (tamaño N).
-    """
-    exp_logits = np.exp(logits - np.max(logits))  # Estabilidad numérica
-    return exp_logits / np.sum(exp_logits)
-
-def categorical_cross_entropy(y_true, y_pred):
-    """
-    Calcula la pérdida categorical cross-entropy.
-    Args:
-        y_true (np.ndarray): Vector de etiquetas verdaderas (one-hot, tamaño N).
-        y_pred (np.ndarray): Vector de predicciones (probabilidades, tamaño N).
-    Returns:
-        float: Pérdida categorical cross-entropy.
-    """
-    return -np.sum(y_true * np.log(y_pred + 1e-15))  # Evitar log(0)
-
-def grad_softmax_cross_entropy(y_true, logits):
-    """
-    Calcula el gradiente de la pérdida categorical cross-entropy respecto a los logits.
-    Args:
-        y_true (np.ndarray): Vector de etiquetas verdaderas (one-hot, tamaño N).
-        logits (np.ndarray): Vector de logits (tamaño N).
-    Returns:
-        np.ndarray: Gradiente respecto a los logits.
-    """
-    y_pred = softmax(logits)
-    return y_pred - y_true  # Gradiente simplificado
-
 class SGD:
-    def __init__(self, net, lr=0.01, epochs=1000, tolerance=0.0001):
+    def __init__(self, net, lr=0.01, epochs=1000, batch_size=32, tolerance=0.0001, lambda_=None):
         self.net = net
         self.lr = lr
         self.epochs = epochs
         self.tolerance = tolerance
         
     def update(self):
+        
         for layer in self.net.layers:
-            layer.weights -= self.lr * layer.dw  
-            layer.bias -= self.lr * layer.db
+            layer.update(
+                self.lr * layer.dw,  
+                self.lr * layer.db
+            )
             
         '''for layer in self.net.layers:
             layer.update([
                 params - self.lr * grads
                 for params, grads in zip(layer.params, layer.grads)
             ])'''
+            
+class SGDMomentum:
+    def __init__(self, net, lr=0.01, epochs=1000, batch_size=32, tolerance=0.0001, lambda_=None, beta=0.9):
+        self.net = net
+        self.lr = lr
+        self.epochs = epochs
+        self.tolerance = tolerance
+        self.beta = beta
+        
+    def update(self):
+        for layer in self.net.layers:
+            if not hasattr(layer, "VdW"):
+                layer.VdW = 0
+            if not hasattr(layer, "VdB"):
+                layer.VdB = 0
+            layer.VdW = self.beta * layer.VdW + (1 - self.beta) * layer.dw
+            layer.VdB = self.beta * layer.VdB + (1 - self.beta) * layer.db
+            layer.update(
+                self.lr * layer.VdW,  
+                self.lr * layer.VdB
+            )
+            
+class RMSProp:
+    def __init__(self, net, lr=0.01, epochs=1000, batch_size=32, tolerance=0.0001, lambda_=None, beta=0.9):
+        self.net = net
+        self.lr = lr
+        self.epochs = epochs
+        self.tolerance = tolerance
+        self.beta = beta
+        
+    def update(self):
+        epsilon = 1e-5
+        for layer in self.net.layers:
+            if not hasattr(layer, "SdW"):
+                layer.SdW = 0
+            if not hasattr(layer, "SdB"):
+                layer.SdB = 0
+            layer.SdW = self.beta * layer.SdW + (1 - self.beta) * (layer.dw ** 2)
+            layer.SdB = self.beta * layer.SdB + (1 - self.beta) * (layer.db ** 2)
+            layer.update(
+                self.lr * (layer.dw / np.sqrt(layer.SdW + epsilon)),  #si sdW es muy grande, al dividir por él el resultado es menor -> La actualición del parámetro es más pequeña. Y viceversa
+                self.lr * (layer.db / np.sqrt(layer.SdB + epsilon))
+            )
 
-if __name__ == "__main__":
-    net = MultilayerPerceptron([
-        Sigmoid(24, 24),
-        Sigmoid(24, 24),
-        Softmax(24, 2)
-    ])
-    
-    optimizer = SGD(net, lr=0.1)
-    loss = BinaryCrossEntropy(net)
-    
-    epochs = 100
-    for _ in range(epochs):
-        y_pred = net.forward(x)
-        loss(y_pred, y)
-        loss.backward()
-        optimizer.update()
+class Adam:
+    def __init__(self, net, lr=0.01, epochs=1000, batch_size=32, beta1=0.9, beta2=0.999):
+        self.net = net
+        self.lr = lr
+        self.epochs = epochs
+        self.beta1 = beta1
+        self.beta2 = beta2
+        
+    def update(self, iter=1):
+        epsilon = 1e-5
+        for layer in self.net.layers:
+            if not hasattr(layer, "VdW"):
+                layer.VdW = 0
+            if not hasattr(layer, "VdB"):
+                layer.VdB = 0
+            if not hasattr(layer, "SdW"):
+                layer.SdW = 0
+            if not hasattr(layer, "SdB"):
+                layer.SdB = 0
+                
+            #Momentum
+            layer.VdW = self.beta1 * layer.VdW + (1 - self.beta1) * layer.dw #en primera interación, valor del primer término es 0. 
+                                                                                #En primeras iteraciones, el valor general es muy pequeño, tarda en "arrancar"
+            layer.VdB = self.beta1 * layer.VdB + (1 - self.beta1) * layer.db
+            #RMSProp
+            layer.SdW = self.beta2 * layer.SdW + (1 - self.beta2) * (layer.dw ** 2)
+            layer.SdB = self.beta2 * layer.SdB + (1 - self.beta2) * (layer.db ** 2)
+            
+            # correccion para compensar arranque lento
+            layer.VdW = layer.VdW / ((1 - self.beta1) ** iter + 1)
+            layer.VdB = layer.VdB / ((1 - self.beta1) ** iter + 1)
+            layer.SdW = layer.SdW / ((1 - self.beta2) ** iter + 1)
+            layer.SdB = layer.SdB / ((1 - self.beta2) ** iter + 1)
+            
+            layer.update(
+                self.lr * (layer.VdW / np.sqrt(layer.SdW + epsilon)), #Momentum / RMSProp
+                self.lr * (layer.VdB / np.sqrt(layer.SdB + epsilon))
+            )
