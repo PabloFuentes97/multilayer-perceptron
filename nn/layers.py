@@ -1,13 +1,16 @@
 import numpy as np
 
 class Layer:
-    def __init__(self, d_in, d_out, name=None):
-        self.weights = np.random.randn(d_in, d_out) * 0.01
+    def __init__(self, d_in, d_out, regularizer=None, name=None):
+        limit = np.sqrt(2 / d_in + d_out)
+        self.weights = np.random.uniform(low=-limit, high=limit, size=(d_in, d_out)) #xavier initialization
+        #self.weights = np.random.randn(d_in, d_out) * 0.01
         #self.bias = np.zeros(d_in)
         self.bias = 0
         self.params = [] #lo que tiene que actualizar el optimizador
         self.grads = []
         self.name = name
+        self.regularizer = regularizer
         
     def forward(self, X):
         #calcular suma
@@ -31,6 +34,12 @@ class Layer:
         #actualizar parámetros con lo que de el optimizer
         return
 
+    def get_weights(self):
+        return self.weights
+    
+    def set_weights(self, weights):
+        self.weights = weights
+    
 def sigmoid(z):
     z = np.clip(z, -500, 500)
     return 1 / (1 + np.exp(-z))
@@ -69,7 +78,17 @@ class Linear(Layer):
     def update(self, w, b):
         self.weights -= w
         self.bias -= b
+
+class ReLU(Layer):
+    def forward(self, X):
+        self.X = X
+        self.z = np.dot(X, self.weights) + self.bias
+        self.a = np.max(0, self.z)
+        return self.a
     
+    def backward(self, grad_output):
+        pass
+            
 class Sigmoid(Layer):
     '''
     def __init__(self, d_in, d_out):
@@ -112,6 +131,7 @@ class Sigmoid(Layer):
     
     def update(self, w, b):
         self.weights -= w
+        #meter aqui regularizacion
         self.bias -= b
 
 

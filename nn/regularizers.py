@@ -5,14 +5,14 @@ class L1:
         self.lambda_ = lambda_
 
     def __call__(self, w):
-        return np.sum(np.abs(w))
+        return self.lambda_ * np.sum(np.abs(w))
 
 class L2:
     def __init__(self, lambda_):
         self.lambda_ = lambda_
 
     def __call__(self, w):
-        return np.sum(w ** 2)
+        return self.lambda_ * np.sum(w ** 2)
 
 if __name__ == "__main__":
     w = np.array([[0, 1, 2, 3],

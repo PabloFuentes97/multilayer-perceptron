@@ -1,5 +1,20 @@
 import numpy as np
 
+def create_mini_batches(X, y, batches_num, batch_size):
+    mini_batches = []
+    size = X.shape[0]
+    if batch_size > size:
+        batch_size = size
+    
+    for _ in range(batches_num):
+        idx = np.random.randint(0, size, batch_size)
+        mini_batch_X =  X[idx]
+        mini_batch_y = y[idx]
+        mini_batches.append((mini_batch_X, mini_batch_y))
+        
+    return mini_batches
+    
+
 class SGD:
     def __init__(self, net, lr=0.01, epochs=1000, batch_size=32, tolerance=0.0001, lambda_=None):
         self.net = net
@@ -98,7 +113,15 @@ class Adam:
             layer.SdW = layer.SdW / ((1 - self.beta2) ** iter + 1)
             layer.SdB = layer.SdB / ((1 - self.beta2) ** iter + 1)
             
+            w_new = layer.VdW / np.sqrt(layer.SdW + epsilon) #Momentum / RMSProp
+            b_new = layer.VdB / np.sqrt(layer.SdB + epsilon)
+            
+            #regularizers
+            '''
+            if layer.regularizer:
+                w_new += layer.regularizer(layer.weights)
+            '''
             layer.update(
-                self.lr * (layer.VdW / np.sqrt(layer.SdW + epsilon)), #Momentum / RMSProp
-                self.lr * (layer.VdB / np.sqrt(layer.SdB + epsilon))
+                self.lr * w_new, 
+                self.lr * b_new
             )

@@ -3,7 +3,6 @@ import pandas as pd
 import typing
 import copy
 
-
 def train_test_split(X: np.ndarray, y: np.ndarray, train_size=0.8):
     if train_size >= 1:
         raise Exception

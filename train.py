@@ -1,23 +1,19 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-#import tensorflow as tf
 from sklearn.preprocessing import StandardScaler
-'''
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense
-from tensorflow.keras.utils import to_categorical
-'''
-from train_test_split import *
-#from my_mlp import *
+
+from nn.train_test_split import *
 from nn.models import Sequential
 from nn.layers import Sigmoid, Softmax
 from nn.loss import BinaryCrossEntropy, CategoricalCrossEntropy
-from nn.optimizers import SGD, Adam
+from nn.optimizers import SGD, Adam, create_mini_batches
 from nn.metrics import accuracy
 from nn.regularizers import L2
+from nn.callbacks import EarlyStopping
 import seaborn as sns
 
+#PROCESS DATASET
 dataset = pd.read_csv("data.csv", header=None)
 dataset[1] = [1 if result == "M" else 0 for result in dataset[1]]
 print(dataset.describe())
@@ -26,13 +22,14 @@ vars = vars.delete(1)
 
 X = dataset.drop(columns=[1]).to_numpy()
 y = dataset[1].to_numpy()
+
+#PLOT HISTOGRAMS
 fig, ax = plt.subplots(4, 8)
 ax = ax.flatten()
 y_f = y.flatten()
 idx_m = np.where(y_f == 1)
 idx_b = np.where(y_f == 0)
 n, m = X.shape
-print("X shape:", X.shape)
 for i in range(m):
     X_i = X[:, i]
     X_m = X_i[idx_m]
@@ -44,99 +41,89 @@ for i in range(m):
 fig.legend(labels=["malign", "benign"])    
 plt.show()
 
-'''
-grid = sns.PairGrid(dataset, hue=1, vars=vars, height=2)
-grid.map_diag(sns.histplot)
-grid.map_offdiag(sns.scatterplot)
-
-ax = sns.pairplot(dataset, hue=1, vars=vars)
-plt.savefig("pair_plot.png")
-'''
+#SPLIT DATA
 classes = np.unique(y)
 num_classes = len(classes)
-
-
-print("X shape:", X.shape)
 scaler = StandardScaler()
 Xn = scaler.fit_transform(X)
-print("Xn shape:", Xn.shape)
-print("CLASSES:", classes)
-
 X_train, X_, y_train, y_ = train_test_split(Xn, y, train_size=0.6)
-X_cv, X_test, y_cv, y_test = train_test_split(X_, y_, train_size=0.5)
 y_train = np.identity(n=num_classes)[y_train]
-print("ONE HOT ENCODED Y_TRAIN:", y_train)
-#TENSORFLOW 
-'''
-print("TENSORFLOW")
-tf.random.set_seed(1234)  # applied to achieve consistent results
-model = Sequential(
-    [
-        tf.keras.Input(shape=(31,)),
-        Dense(units=24, activation='sigmoid', name='layer1'),
-        Dense(units=24, activation='sigmoid', name='layer2'),
-        Dense(units=2, activation="softmax", name='output_layer')
-     ]
-)
-
-model.compile(
-    loss = tf.keras.losses.BinaryCrossentropy(),
-    optimizer = tf.keras.optimizers.Adam(learning_rate=0.1),
-    metrics=["accuracy"]
-)
-print(model.summary())
-
-#y_train_cat = to_categorical(y_train, num_classes=num_classes)
-history = model.fit(
-    X_train, y_train,            
-    epochs=100,
-)
-np.set_printoptions(precision=3, suppress=True)
-#LOSS PLOT
-plt.plot(list(range(100)), history.history["loss"], color="blue")
-plt.xlabel("Epochs")
-plt.ylabel("Loss")
-plt.title("Loss history TensorFlow model")
-plt.show()
-
-#ACCURACY PLOT
-plt.plot(list(range(100)), history.history["accuracy"], color="red")
-plt.xlabel("Epochs")
-plt.ylabel("Accuracy")
-plt.title("Accuracy history TensorFlow model")
-plt.show()
-
-proba = model.predict(X_test)
-#print("PROBA:", proba)
-predictions = np.argmax(proba, axis=1)
-y_test_pred = np.argmax(y_test, axis=1)
-#print("PREDICTIONS:", predictions)
-acc = (y_test_pred == predictions).mean()
-print(f"Accuracy: {acc * 100}%")
-'''
+X_cv, X_test, y_cv, y_test = train_test_split(X_, y_, train_size=0.5)
+y_cv = np.identity(n=num_classes)[y_cv]
 
 #MY MODEL
 input_features = X_train.shape[1]
 net = Sequential([
-    Sigmoid(31, 8, name="layer1"),
-    Sigmoid(8, 2, name="layer2"),
-    Softmax(2, 2, name="output_layer")
+    Sigmoid(31, 24, regularizer=L2(0.5), name="layer1"),
+    Sigmoid(24, 12, regularizer=L2(0.5), name="layer2"),
+    Sigmoid(12, 2, regularizer=L2(0.5), name="layer3"),
+    Softmax(2, 2, regularizer=L2(0.5), name="output_layer")
 ])
 
 loss = CategoricalCrossEntropy(net)
-optimizer = SGD(net, lr=0.1)
+optimizer = Adam(net, lr=0.01)
 
 net.summary()
 net.compile(loss, optimizer)
 
-history = net.fit(X_train, y_train, 100)
+'''history = net.fit(X_train, y_train, epochs=100, batch_size=512, validation=True)
 loss_history = history["loss"]
-print("Loss after training:", loss_history[-1])
+val_loss_history = history["val_loss"]'''
 
-plt.plot(list(range(len(loss_history))), loss_history, color="red")
+loss_history = []
+val_loss_history = []
+acc_history = []
+val_acc_history = []
+
+epochs = 100
+batches_num = 15
+batch_size = 256
+
+early_stopping = EarlyStopping(net, min_delta=0.01, patience=5, verbose=True, restore_best_weights=True, start_from_epoch=5)
+
+for epoch in range(epochs):
+    #training step
+    for batch_x, batch_y in create_mini_batches(X_train, y_train, batches_num, batch_size):
+        y_pred = net.forward(batch_x)
+        j = loss(y_pred, batch_y)
+        loss.backward()
+        optimizer.update(epoch)
+        acc = accuracy(y_pred.argmax(axis=1), batch_y.argmax(axis=1))
+    loss_history.append(j)
+    acc_history.append(acc)
+    
+    #validation
+    y_pred_val = net.forward(X_cv)
+    j_val = loss(y_pred_val, y_cv)
+    acc_val = accuracy(y_pred_val.argmax(axis=1), y_cv.argmax(axis=1))
+    val_loss_history.append(j_val)
+    val_acc_history.append(acc_val)
+    
+    #early_stopping
+    if early_stopping(epoch, j):
+        break
+    
+
+print("Loss after training:", loss_history[-1])
+print("Validation Loss after training:", val_loss_history[-1])
+
+#LOSS PLOT
+plt.plot(list(range(len(loss_history))), loss_history, color="orange")
+plt.plot(list(range(len(val_loss_history))), val_loss_history, color="blue", linestyle="dotted", alpha=0.8)
 plt.xlabel("Epochs")
 plt.ylabel("Loss")
 plt.title("Loss history")
+plt.show()
+
+#ACC PLOT
+'''
+acc_history = history["acc"]
+val_acc_history = history["val_acc"]'''
+plt.plot(list(range(len(acc_history))), acc_history, color="orange")
+plt.plot(list(range(len(val_acc_history))), val_acc_history, color="blue", linestyle="dotted", alpha=0.8)
+plt.xlabel("Epochs")
+plt.ylabel("Accuracy")
+plt.title("Accuracy history")
 plt.show()
 
 predictions_onehot = net.predict(X_test)
@@ -145,10 +132,3 @@ predictions = predictions_onehot.argmax(axis=1)
 #print("Predictions:", predictions)
 acc = accuracy(predictions, y_test)
 print(f"Accuracy: {acc * 100}%")
-'''
-fig,ax=plt.subplots(1, 4, figsize=(12, 3), sharey=True)
-for i in range(len(ax)):
-    ax[i].scatter(X_train[:,i],y_train)
-    ax[i].set_xlabel(X_features[i])
-ax[0].set_ylabel("Price (1000's)")
-plt.show()'''
