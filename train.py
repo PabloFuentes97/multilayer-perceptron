@@ -2,13 +2,12 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
-
 from nn.train_test_split import *
 from nn.models import Sequential
-from nn.layers import Sigmoid, Softmax
+from nn.layers import Sigmoid, Softmax, ReLU, LeakyReLU, Tanh
 from nn.loss import BinaryCrossEntropy, CategoricalCrossEntropy
 from nn.optimizers import SGD, Adam, create_mini_batches
-from nn.metrics import accuracy
+from nn.metrics import *
 from nn.regularizers import L2
 from nn.callbacks import EarlyStopping
 import seaborn as sns
@@ -16,30 +15,9 @@ import seaborn as sns
 #PROCESS DATASET
 dataset = pd.read_csv("data.csv", header=None)
 dataset[1] = [1 if result == "M" else 0 for result in dataset[1]]
-print(dataset.describe())
-vars = dataset.columns
-vars = vars.delete(1)
 
 X = dataset.drop(columns=[1]).to_numpy()
 y = dataset[1].to_numpy()
-
-#PLOT HISTOGRAMS
-fig, ax = plt.subplots(4, 8)
-ax = ax.flatten()
-y_f = y.flatten()
-idx_m = np.where(y_f == 1)
-idx_b = np.where(y_f == 0)
-n, m = X.shape
-for i in range(m):
-    X_i = X[:, i]
-    X_m = X_i[idx_m]
-    X_b = X_i[idx_b]
-    ax[i].hist(X_m, alpha=0.5, color="red")
-    ax[i].hist(X_b, alpha=0.5, color="blue")
-    ax[i].set_title(f"{i}")
-
-fig.legend(labels=["malign", "benign"])    
-plt.show()
 
 #SPLIT DATA
 classes = np.unique(y)
@@ -52,15 +30,15 @@ X_cv, X_test, y_cv, y_test = train_test_split(X_, y_, train_size=0.5)
 y_cv = np.identity(n=num_classes)[y_cv]
 
 #MY MODEL
-input_features = X_train.shape[1]
-net = Sequential([
-    Sigmoid(31, 24, regularizer=L2(0.5), name="layer1"),
-    Sigmoid(24, 12, regularizer=L2(0.5), name="layer2"),
-    Sigmoid(12, 2, regularizer=L2(0.5), name="layer3"),
-    Softmax(2, 2, regularizer=L2(0.5), name="output_layer")
+features = X_train.shape[1]
+net = Sequential(input_dim=X_train.shape[1], layers=[
+    Sigmoid(24, name="layer1"),
+    Sigmoid(12, name="layer2"),
+    Sigmoid(2, name="layer3"),
+    Softmax(2, name="output_layer")
 ])
 
-loss = CategoricalCrossEntropy(net)
+loss = BinaryCrossEntropy(net)
 optimizer = Adam(net, lr=0.01)
 
 net.summary()
@@ -70,16 +48,20 @@ net.compile(loss, optimizer)
 loss_history = history["loss"]
 val_loss_history = history["val_loss"]'''
 
-loss_history = []
-val_loss_history = []
-acc_history = []
-val_acc_history = []
+train_history = {"loss": []}
+val_history = {"loss": []}
 
 epochs = 100
 batches_num = 15
 batch_size = 256
 
 early_stopping = EarlyStopping(net, min_delta=0.01, patience=5, verbose=True, restore_best_weights=True, start_from_epoch=5)
+metrics = {
+    "accuracy": accuracy, 
+    "precision": precision_score,
+    "recall": recall_score
+}
+
 
 for epoch in range(epochs):
     #training step
@@ -87,22 +69,40 @@ for epoch in range(epochs):
         y_pred = net.forward(batch_x)
         j = loss(y_pred, batch_y)
         loss.backward()
-        optimizer.update(epoch)
-        acc = accuracy(y_pred.argmax(axis=1), batch_y.argmax(axis=1))
-    loss_history.append(j)
-    acc_history.append(acc)
-    
+        optimizer.update()
+        y_pred_bin = y_pred.argmax(axis=1)
+        batch_y_bin = batch_y.argmax(axis=1)
+        '''
+        acc = accuracy(y_pred_bin, batch_y_bin)
+        p = precision_score(y_pred_bin, batch_y_bin)
+        r = recall_score(y_pred_bin, batch_y_bin)
+        '''
+        
+    train_history["loss"].append(j)
     #validation
     y_pred_val = net.forward(X_cv)
     j_val = loss(y_pred_val, y_cv)
-    acc_val = accuracy(y_pred_val.argmax(axis=1), y_cv.argmax(axis=1))
-    val_loss_history.append(j_val)
-    val_acc_history.append(acc_val)
+    val_history["loss"].append(j_val)
     
+    for metric_name, metric_func in metrics.items():
+        if not metric_name in train_history:
+            train_history[metric_name] = []
+        train_history[metric_name].append(metric_func(y_pred_bin, batch_y_bin))
+        if not metric_name in val_history:
+            val_history[metric_name] = []
+        val_history[metric_name].append(metric_func(y_pred_val, y_cv))
+
     #early_stopping
-    if early_stopping(epoch, j):
+    if early_stopping(epoch):
         break
     
+
+loss_history = train_history["loss"]
+val_loss_history = val_history["loss"]
+acc_history = train_history["accuracy"]
+val_acc_history = val_history["accuracy"]
+recall_history = train_history["recall"]
+precision_history = train_history["precision"]
 
 print("Loss after training:", loss_history[-1])
 print("Validation Loss after training:", val_loss_history[-1])
@@ -131,4 +131,13 @@ predictions_onehot = net.predict(X_test)
 predictions = predictions_onehot.argmax(axis=1)
 #print("Predictions:", predictions)
 acc = accuracy(predictions, y_test)
-print(f"Accuracy: {acc * 100}%")
+print(f"Accuracy: {acc}%")
+
+'''
+plt.plot(recall_history, precision_history, color="orange")
+plt.xlabel("Recall")
+plt.ylabel("Precision")
+plt.title("Precision-recall curve")
+plt.show()
+'''
+net.save("model_data")

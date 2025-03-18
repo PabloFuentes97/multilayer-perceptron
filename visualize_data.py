@@ -8,7 +8,7 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.utils import to_categorical
 '''
-from train_test_split import *
+from nn.train_test_split import *
 #from my_mlp import *
 from nn.models import Sequential
 from nn.layers import Sigmoid, Softmax

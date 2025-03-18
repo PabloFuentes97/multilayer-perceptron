@@ -16,8 +16,8 @@ class EarlyStopping:
         self.best_loss = np.inf
         return
 
-    def __call__(self, epoch, j):
-        self.epoch = epoch
+    def __call__(self, j):
+        self.epoch += 1
         if self.epoch < self.start_from_epoch:
             return False
 
