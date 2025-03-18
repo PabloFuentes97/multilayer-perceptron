@@ -1,14 +1,14 @@
 import numpy as np
 
 class L1:
-    def __init__(self, lambda_):
+    def __init__(self, lambda_=1e-4):
         self.lambda_ = lambda_
 
     def __call__(self, w):
-        return self.lambda_ * np.sum(np.abs(w))
+        return self.lambda_ * np.abs(w)
 
 class L2:
-    def __init__(self, lambda_):
+    def __init__(self, lambda_=1e-4):
         self.lambda_ = lambda_
 
     def __call__(self, w):

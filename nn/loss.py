@@ -15,7 +15,7 @@ class Loss():
 class BinaryCrossEntropy(Loss):
     def __call__(self, output, target):
         self.output, self.target = output, target.reshape(output.shape)
-        loss = - np.mean(self.target * np.log(self.output + 1e-15) - (1 - self.target) * np.log(1 - self.output + 1e-15))
+        loss = - np.mean(self.target * np.log(self.output + 1e-15) + (1 - self.target) * np.log(1 - self.output + 1e-15))
         return loss
     
     def grad_loss(self): #derivada de funcion de coste

@@ -86,8 +86,9 @@ class Adam:
         self.epochs = epochs
         self.beta1 = beta1
         self.beta2 = beta2
+        self.t = 0
         
-    def update(self, iter=1):
+    def update(self):
         epsilon = 1e-5
         for layer in self.net.layers:
             if not hasattr(layer, "VdW"):
@@ -107,21 +108,18 @@ class Adam:
             layer.SdW = self.beta2 * layer.SdW + (1 - self.beta2) * (layer.dw ** 2)
             layer.SdB = self.beta2 * layer.SdB + (1 - self.beta2) * (layer.db ** 2)
             
-            # correccion para compensar arranque lento
-            layer.VdW = layer.VdW / ((1 - self.beta1) ** iter + 1)
-            layer.VdB = layer.VdB / ((1 - self.beta1) ** iter + 1)
-            layer.SdW = layer.SdW / ((1 - self.beta2) ** iter + 1)
-            layer.SdB = layer.SdB / ((1 - self.beta2) ** iter + 1)
+            #correccion para compensar arranque lento
+            layer.VdW = layer.VdW / ((1 - self.beta1) ** self.t + 1)
+            layer.VdB = layer.VdB / ((1 - self.beta1) ** self.t + 1)
+            layer.SdW = layer.SdW / ((1 - self.beta2) ** self.t + 1)
+            layer.SdB = layer.SdB / ((1 - self.beta2) ** self.t + 1)
             
-            w_new = layer.VdW / np.sqrt(layer.SdW + epsilon) #Momentum / RMSProp
-            b_new = layer.VdB / np.sqrt(layer.SdB + epsilon)
+            w_new = layer.VdW / (np.sqrt(layer.SdW) + epsilon) #Momentum / RMSProp
+            b_new = layer.VdB / (np.sqrt(layer.SdB) + epsilon)
             
-            #regularizers
-            '''
-            if layer.regularizer:
-                w_new += layer.regularizer(layer.weights)
-            '''
             layer.update(
                 self.lr * w_new, 
                 self.lr * b_new
             )
+            
+        self.t += 1
