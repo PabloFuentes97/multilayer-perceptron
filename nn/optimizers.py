@@ -1,19 +1,4 @@
-import numpy as np
-
-def create_mini_batches(X, y, batches_num, batch_size):
-    mini_batches = []
-    size = X.shape[0]
-    if batch_size > size:
-        batch_size = size
-    
-    for _ in range(batches_num):
-        idx = np.random.randint(0, size, batch_size)
-        mini_batch_X =  X[idx]
-        mini_batch_y = y[idx]
-        mini_batches.append((mini_batch_X, mini_batch_y))
-        
-    return mini_batches
-    
+import numpy as np 
 
 class SGD:
     def __init__(self, net, lr=0.01, epochs=1000, batch_size=32, tolerance=0.0001, lambda_=None):
@@ -43,7 +28,20 @@ class SGDMomentum:
         self.epochs = epochs
         self.tolerance = tolerance
         self.beta = beta
+    
+    def init_velocity(self, params):
+        self.vdW = []
+        self.vdb = []
         
+        layers = params // 2
+        for l in range(0, layers):
+            w_i, b_i = params[l]
+            vdW_i = np.zeros(shape=w_i.shape)
+            vdb_i = np.zeros(shape=b_i.shape)
+            self.vdW.append(vdW_i)
+            self.vdb.append(vdb_i)
+    
+
     def update(self):
         for layer in self.net.layers:
             if not hasattr(layer, "VdW"):
@@ -57,7 +55,7 @@ class SGDMomentum:
                 self.lr * layer.VdB
             )
             
-class RMSProp:
+class RMSProp: #Root Mean Squared Prop
     def __init__(self, net, lr=0.01, epochs=1000, batch_size=32, tolerance=0.0001, lambda_=None, beta=0.9):
         self.net = net
         self.lr = lr
@@ -72,24 +70,42 @@ class RMSProp:
                 layer.SdW = 0
             if not hasattr(layer, "SdB"):
                 layer.SdB = 0
-            layer.SdW = self.beta * layer.SdW + (1 - self.beta) * (layer.dw ** 2)
-            layer.SdB = self.beta * layer.SdB + (1 - self.beta) * (layer.db ** 2)
+            layer.SdW = self.beta * layer.SdW + (1 - self.beta) * (layer.dw ** 2) #horizontal axis -> try to update faster
+            layer.SdB = self.beta * layer.SdB + (1 - self.beta) * (layer.db ** 2) #vertical axis -> try to update slower -> dump oscilations
             layer.update(
-                self.lr * (layer.dw / np.sqrt(layer.SdW + epsilon)),  #si sdW es muy grande, al dividir por él el resultado es menor -> La actualición del parámetro es más pequeña. Y viceversa
+                self.lr * (layer.dw / np.sqrt(layer.SdW + epsilon)),  #si sdW es muy grande, al dividir por él el resultado es menor -> La actualización del parámetro es más pequeña. Y viceversa
                 self.lr * (layer.db / np.sqrt(layer.SdB + epsilon))
             )
+            
 
-class Adam:
-    def __init__(self, net, lr=0.01, epochs=1000, batch_size=32, beta1=0.9, beta2=0.999):
+
+
+class Adam: #Adaptive Moment Estimation
+    def __init__(self, net, lr=0.01, epochs=1000, batch_size=32, beta1=0.9, beta2=0.999, decay=None, decay_rate=1):
         self.net = net
+        self.parameters = net
         self.lr = lr
         self.epochs = epochs
         self.beta1 = beta1
         self.beta2 = beta2
-        self.t = 0
+        self.t = 1
+    
+    def initialize(self, params): #cambiar esto para el init -> que solo pase los parámetros, no la red entera
+        self.v = []
+        self.s = []
         
+        layers = params // 2
+        for l in range(0, layers):
+            w_i, b_i = params[l]
+            vdW_i = np.zeros(shape=w_i.shape)
+            vdb_i = np.zeros(shape=b_i.shape)
+            self.v.append((vdW_i, vdb_i))
+            sdW_i = np.zeros(shape=w_i.shape)
+            sdb_i = np.zeros(shape=b_i.shape)
+            self.s.append((sdW_i, sdb_i))
+       
     def update(self):
-        epsilon = 1e-5
+        epsilon = 1e-8
         for layer in self.net.layers:
             if not hasattr(layer, "VdW"):
                 layer.VdW = 0
@@ -108,12 +124,13 @@ class Adam:
             layer.SdW = self.beta2 * layer.SdW + (1 - self.beta2) * (layer.dw ** 2)
             layer.SdB = self.beta2 * layer.SdB + (1 - self.beta2) * (layer.db ** 2)
             
-            #correccion para compensar arranque lento
-            layer.VdW = layer.VdW / ((1 - self.beta1) ** self.t + 1)
-            layer.VdB = layer.VdB / ((1 - self.beta1) ** self.t + 1)
-            layer.SdW = layer.SdW / ((1 - self.beta2) ** self.t + 1)
-            layer.SdB = layer.SdB / ((1 - self.beta2) ** self.t + 1)
-            
+            #Bias correction -> compensar arranque lento
+            '''
+            layer.VdW = layer.VdW / (1 - self.beta1 ** self.t)
+            layer.VdB = layer.VdB / (1 - self.beta1 ** self.t)
+            layer.SdW = layer.SdW / (1 - self.beta2 ** self.t)
+            layer.SdB = layer.SdB / (1 - self.beta2 ** self.t)
+            '''
             w_new = layer.VdW / (np.sqrt(layer.SdW) + epsilon) #Momentum / RMSProp
             b_new = layer.VdB / (np.sqrt(layer.SdB) + epsilon)
             
@@ -122,4 +139,4 @@ class Adam:
                 self.lr * b_new
             )
             
-        self.t += 1
+        #self.t += 1
