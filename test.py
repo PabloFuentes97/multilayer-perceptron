@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from nn.metrics import accuracy
+from nn.loss import BinaryCrossEntropy
+from nn.metrics import f1_score
 import sys
 import joblib
 
@@ -30,5 +32,11 @@ X_test = scaler.fit_transform(X_test)
 net = joblib.load("model")
 y_probs = net.predict(X_test)
 y_pred = y_probs.argmax(axis=1)
+criterion = BinaryCrossEntropy()
+loss = criterion(y_pred, y_test)
+print("Probs:", y_probs)
+print(f"Loss:{loss}")
 acc = accuracy(y_pred, y_test)
+f1 = f1_score(y_pred, y_test)
+print(f"F1-score: {f1}, 1 - F1-Score: {1 - f1}")
 print(f"Accuracy: {acc}%")
