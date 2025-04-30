@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from scipy.stats import pearsonr, pointbiserialr
+from scipy.stats import pointbiserialr
 
 dataset = pd.read_csv("data.csv", header=None)
 features = dataset.columns
@@ -10,18 +10,12 @@ X = dataset.drop(columns=[0, 1])
 y = np.array([True if diagnosis == "M" else False for diagnosis in dataset[1]])
 
 #POINT BISERIAL CORRELATION OF ALL DATA -> BETWEEN CONTINOUS AND CATEGORICAL VARIABLES
-#rpbis = np.zeros(X.shape[1])
 correlated_features = []
 for i in range(X.shape[1]):
     X_i = X.iloc[:, i]
     rpbis_i, p = pointbiserialr(y, X_i)
-    #rpbis[i] = rpbis_i
     if p < 0.05:
         correlated_features.append((i, rpbis_i))
-
-#feature_correlation = list(zip(features, rpbis))
-#feature_correlation = list(filter(lambda tup: tup[1] > 0.05, feature_correlation))
-#feature_correlation.sort(key=lambda tup: tup[1], reverse=True)
 correlated_features.sort(key=lambda tup: tup[1], reverse=True)
 
 print("Correlated features:")
@@ -40,8 +34,7 @@ for i in range(m):
     X_benign = X_i[idx_benign]
     ax[i].hist(X_malign, bins=5, alpha=0.5, color="red")
     ax[i].hist(X_benign, bins=5, alpha=0.5, color="blue")
-    ax[i].set_title(f"{features[i]}")
-    
+    ax[i].set_title(f"{features[i]}") 
 fig.legend(labels=["malign", "benign"])
 fig.tight_layout()
 plt.show()
@@ -60,8 +53,6 @@ for i in range(m):
     ax[i].violinplot(X_malign, vert=False, showmeans=True, showextrema=True, quantiles=quantiles)
     ax[i].violinplot(X_benign, vert=False, showmeans=True, showextrema=True, quantiles=quantiles)
     ax[i].set_title(f"{features[i]}")
-
-    
 fig.legend(labels=["malign", "benign"])
 fig.tight_layout()
 plt.show()

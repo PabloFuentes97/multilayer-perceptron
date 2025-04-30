@@ -8,18 +8,11 @@ class SGD:
         self.tolerance = tolerance
         
     def update(self):
-        
         for layer in self.net.layers:
             layer.update(
                 self.lr * layer.dw,  
                 self.lr * layer.db
             )
-            
-        '''for layer in self.net.layers:
-            layer.update([
-                params - self.lr * grads
-                for params, grads in zip(layer.params, layer.grads)
-            ])'''
             
 class SGDMomentum:
     def __init__(self, net, lr=0.01, epochs=1000, batch_size=32, tolerance=0.0001, lambda_=None, beta=0.9):
@@ -89,20 +82,6 @@ class Adam: #Adaptive Moment Estimation
         self.beta1 = beta1
         self.beta2 = beta2
         self.t = 1
-    
-    def initialize(self, params): #cambiar esto para el init -> que solo pase los parámetros, no la red entera
-        self.v = []
-        self.s = []
-        
-        layers = params // 2
-        for l in range(0, layers):
-            w_i, b_i = params[l]
-            vdW_i = np.zeros(shape=w_i.shape)
-            vdb_i = np.zeros(shape=b_i.shape)
-            self.v.append((vdW_i, vdb_i))
-            sdW_i = np.zeros(shape=w_i.shape)
-            sdb_i = np.zeros(shape=b_i.shape)
-            self.s.append((sdW_i, sdb_i))
        
     def update(self):
         epsilon = 1e-8

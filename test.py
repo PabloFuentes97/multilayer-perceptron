@@ -1,40 +1,34 @@
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
-from nn.train_test_split import *
-from nn.models import Sequential
-from nn.layers import Sigmoid, Softmax
 from nn.metrics import accuracy
+import sys
+import joblib
 
+#CHECK ARGS
+args = sys.argv
+if len(args) != 2:
+    print("Bad number of arguments")
+    exit(1)
 
-#PROCESS DATASET
-dataset = pd.read_csv("data.csv", header=None)
+filename = args[1]
+#LOAD FILE TO DATAFRAME
+try:
+    dataset = pd.read_csv(filename, header=None)
+except FileNotFoundError:
+    print("File not found!")
+    exit(2)
+
 dataset[1] = [1 if result == "M" else 0 for result in dataset[1]]
 
-X = dataset.drop(columns=[1]).to_numpy()
-y = dataset[1].to_numpy()
-#SPLIT DATA
+X_test = dataset.drop(columns=[1]).to_numpy()
+y_test = dataset[1].to_numpy()
+#NORMALIZE DATA
 scaler = StandardScaler()
-Xn = scaler.fit_transform(X)
-X_train, X_test, y_train, y_test = train_test_split(Xn, y, train_size=0.8)
+X_test = scaler.fit_transform(X_test)
 
-net = Sequential(input_dim=X_train.shape[1], layers=[
-    Sigmoid(64, name="layer1"),
-    Sigmoid(32, name="layer2"),
-    Sigmoid(24, name="layer3"),
-    Sigmoid(12, name="layer4"),
-    Sigmoid(2, name="layer5"),
-    Softmax(2, name="output_layer")
-])
-
-net.load("model_data")
-
-y_pred_onehot = net.predict(X_test)
-y_pred = y_pred_onehot.argmax(axis=1)
-for layer in net.layers:
-    print(layer.weights.shape)
-print(y_pred_onehot)
-print(y_pred)
-print(y_test)
+net = joblib.load("model")
+y_probs = net.predict(X_test)
+y_pred = y_probs.argmax(axis=1)
 acc = accuracy(y_pred, y_test)
 print(f"Accuracy: {acc}%")

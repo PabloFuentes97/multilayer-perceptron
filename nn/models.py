@@ -1,6 +1,5 @@
 import numpy as np
 from .train_test_split import train_test_split
-from termcolor import colored
 import time
 import json
 
@@ -8,27 +7,14 @@ class Sequential:
     def __init__(self, input_dim, layers):
         #red como lista de capas
         self.layers = layers
-        self.initialize_params(input_dim)
-        '''
-        for idx, layer in self.layers:
-            if idx > 0:
-        '''        
+        self.initialize_params(input_dim)  
     
     def initialize_params(self, input_dim):
         prev_dim = input_dim
         for layer in self.layers:
             layer.init_params(prev_dim, layer.units)
-            #layer.init_params(layer.units, prev_dim) / usar asi para np.dot(W.T, X) -> 
-            #se almacena W en vectores columnas, cada neurona una columna; al hacer T se ajustan las dimensiones
-            prev_dim = layer.units  # La salida de esta capa es la entrada de la siguiente
+            prev_dim = layer.units
        
-        #version andrew ng -> le cambia el orden -> (unidades de capa actual l, unidades de capa anterior l - 1)
-        '''
-        for l in range(len(self.layers)):
-            layer_weights = np.random.randn(self.layers[l].units, self.layers[l - 1].units)
-            layer_bias = np.zeros(shape=(self.layers[l].units))
-        '''     
-    
     def compile(self, loss, optimizer):
         self.loss = loss
         self.loss.net = self
@@ -66,7 +52,6 @@ class Sequential:
         return parameters
     
     def forward(self, X):
-        #calcular salida del modelo aplicando cada capa secuencialmente
         for layer in self.layers:
             X = layer.forward(X)
     
