@@ -6,24 +6,28 @@ from scipy.stats import pointbiserialr
 
 dataset = pd.read_csv("data.csv", header=None)
 features = dataset.columns
-X = dataset.drop(columns=[0, 1])
+X = dataset.drop(columns=[1])
 y = np.array([True if diagnosis == "M" else False for diagnosis in dataset[1]])
 
 #POINT BISERIAL CORRELATION OF ALL DATA -> BETWEEN CONTINOUS AND CATEGORICAL VARIABLES
 correlated_features = []
+not_correlated_features = []
 for i in range(X.shape[1]):
     X_i = X.iloc[:, i]
     rpbis_i, p = pointbiserialr(y, X_i)
     if p < 0.05:
         correlated_features.append((i, rpbis_i))
+    else:
+        not_correlated_features.append(i)
 correlated_features.sort(key=lambda tup: tup[1], reverse=True)
 
+print(f"Not correlated features: {not_correlated_features}")
 print("Correlated features:")
 for feature, corr in correlated_features:
     print(feature, ":", corr)
     
 #HISTOGRAMS
-fig, ax = plt.subplots(5, 6, figsize=(15, 12))
+fig, ax = plt.subplots(8, 4, figsize=(15, 12))
 ax = ax.flatten()
 idx_malign = np.where(y == True)
 idx_benign = np.where(y == False)

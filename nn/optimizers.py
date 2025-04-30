@@ -15,10 +15,9 @@ class SGD:
             )
             
 class SGDMomentum:
-    def __init__(self, net, lr=0.01, epochs=1000, batch_size=32, tolerance=0.0001, lambda_=None, beta=0.9):
+    def __init__(self, net, lr=0.01, tolerance=0.0001, lambda_=None, beta=0.9):
         self.net = net
         self.lr = lr
-        self.epochs = epochs
         self.tolerance = tolerance
         self.beta = beta
     
@@ -49,10 +48,9 @@ class SGDMomentum:
             )
             
 class RMSProp: #Root Mean Squared Prop
-    def __init__(self, net, lr=0.01, epochs=1000, batch_size=32, tolerance=0.0001, lambda_=None, beta=0.9):
+    def __init__(self, net, lr=0.01, tolerance=0.0001, lambda_=None, beta=0.9):
         self.net = net
         self.lr = lr
-        self.epochs = epochs
         self.tolerance = tolerance
         self.beta = beta
         
@@ -69,31 +67,27 @@ class RMSProp: #Root Mean Squared Prop
                 self.lr * (layer.dw / np.sqrt(layer.SdW + epsilon)),  #si sdW es muy grande, al dividir por él el resultado es menor -> La actualización del parámetro es más pequeña. Y viceversa
                 self.lr * (layer.db / np.sqrt(layer.SdB + epsilon))
             )
-            
-
-
 
 class Adam: #Adaptive Moment Estimation
-    def __init__(self, net, lr=0.01, epochs=1000, batch_size=32, beta1=0.9, beta2=0.999, decay=None, decay_rate=1):
+    def __init__(self, net, lr=0.01, beta1=0.9, beta2=0.999, decay=None, decay_rate=1):
         self.net = net
         self.parameters = net
         self.lr = lr
-        self.epochs = epochs
         self.beta1 = beta1
         self.beta2 = beta2
-        self.t = 1
+        self.t = 0
        
     def update(self):
         epsilon = 1e-8
         for layer in self.net.layers:
             if not hasattr(layer, "VdW"):
-                layer.VdW = 0
+                layer.VdW = np.zeros(shape=layer.weights.shape)
             if not hasattr(layer, "VdB"):
-                layer.VdB = 0
+                layer.VdB = np.zeros(1)
             if not hasattr(layer, "SdW"):
-                layer.SdW = 0
+                layer.SdW = np.zeros(shape=layer.weights.shape)
             if not hasattr(layer, "SdB"):
-                layer.SdB = 0
+                layer.SdB = np.zeros(1)
                 
             #Momentum
             layer.VdW = self.beta1 * layer.VdW + (1 - self.beta1) * layer.dw #en primera interación, valor del primer término es 0. 
@@ -104,14 +98,14 @@ class Adam: #Adaptive Moment Estimation
             layer.SdB = self.beta2 * layer.SdB + (1 - self.beta2) * (layer.db ** 2)
             
             #Bias correction -> compensar arranque lento
-            '''
-            layer.VdW = layer.VdW / (1 - self.beta1 ** self.t)
-            layer.VdB = layer.VdB / (1 - self.beta1 ** self.t)
-            layer.SdW = layer.SdW / (1 - self.beta2 ** self.t)
-            layer.SdB = layer.SdB / (1 - self.beta2 ** self.t)
-            '''
-            w_new = layer.VdW / (np.sqrt(layer.SdW) + epsilon) #Momentum / RMSProp
-            b_new = layer.VdB / (np.sqrt(layer.SdB) + epsilon)
+            
+            VdW_hat = layer.VdW / (1.0 - self.beta1 ** (self.t + 1))
+            VdB_hat = layer.VdB / (1.0 - self.beta1 ** (self.t + 1))
+            SdW_hat = layer.SdW / (1.0 - self.beta2 ** (self.t + 1))
+            SdB_hat = layer.SdB / (1.0 - self.beta2 ** (self.t + 1))
+            
+            w_new = VdW_hat / (np.sqrt(SdW_hat) + epsilon) #Momentum / RMSProp
+            b_new = VdB_hat / (np.sqrt(SdB_hat) + epsilon)
             
             layer.update(
                 self.lr * w_new, 

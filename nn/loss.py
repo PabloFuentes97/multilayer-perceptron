@@ -10,13 +10,6 @@ class BinaryCrossEntropy(Loss):
     
     def grad_loss(self, y_pred, y_true): #derivada de funcion de coste
         return y_pred - y_true
-    
-    def backward(self, grad_loss):
-        #derivada de la loss function con respecto a salida de la red
-        grad = grad_loss
-        #BACKPROPAGATION
-        for layer in reversed(self.net.layers):
-            grad = layer.backward(grad)
 
 class CategoricalCrossEntropy(Loss):
     def __call__(self, y_pred, y_true):

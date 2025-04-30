@@ -59,7 +59,7 @@ class Linear(Dense):
     def backward(self, grad_output):
         # Gradientes de los parámetros
         self.dw = np.dot(self.X.T, grad_output)  # dC/dw = dC/dz * dz/dw
-        self.db = np.sum(grad_output, axis=0)    # dC/db = dC/dz * dz/db
+        self.db = np.sum(grad_output)    # dC/db = dC/dz * dz/db
         self.grads = [self.dw, self.db]
         # Gradiente para las entradas (para la capa anterior)
         grad_input = np.dot(grad_output, self.weights.T)  # dC/dX = dC/dz * dz/dX

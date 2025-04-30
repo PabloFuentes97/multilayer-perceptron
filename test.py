@@ -23,19 +23,20 @@ except FileNotFoundError:
 
 dataset[1] = [1 if result == "M" else 0 for result in dataset[1]]
 
-X_test = dataset.drop(columns=[1]).to_numpy()
+X_test = dataset.drop(columns=[0, 10, 12, 15, 19, 20]).to_numpy()
 y_test = dataset[1].to_numpy()
+y_test_onehot = np.identity(2)[y_test]
 #NORMALIZE DATA
 scaler = StandardScaler()
 X_test = scaler.fit_transform(X_test)
 
 net = joblib.load("model")
 y_probs = net.predict(X_test)
-y_pred = y_probs.argmax(axis=1)
 criterion = BinaryCrossEntropy()
-loss = criterion(y_pred, y_test)
+loss = criterion(y_probs, y_test_onehot)
 print("Probs:", y_probs)
-print(f"Loss:{loss}")
+print(f"Loss: {loss}")
+y_pred = y_probs.argmax(axis=1)
 acc = accuracy(y_pred, y_test)
 f1 = f1_score(y_pred, y_test)
 print(f"F1-score: {f1}, 1 - F1-Score: {1 - f1}")

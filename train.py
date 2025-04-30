@@ -4,9 +4,9 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from nn.train_test_split import *
 from nn.models import Sequential
-from nn.layers import Sigmoid, Softmax
+from nn.layers import Sigmoid, ReLU, Linear, Softmax
 from nn.loss import BinaryCrossEntropy
-from nn.optimizers import  Adam
+from nn.optimizers import RMSProp, Adam
 from nn.create_minibatches import *
 from nn.metrics import *
 from nn.callbacks import EarlyStopping
@@ -31,7 +31,7 @@ except FileNotFoundError:
 
 dataset[1] = [1 if result == "M" else 0 for result in dataset[1]]
 
-X = dataset.drop(columns=[1]).to_numpy()
+X = dataset.drop(columns=[0, 10, 12, 15, 19, 20]).to_numpy()
 y = dataset[1].to_numpy()
 
 #SPLIT DATA
@@ -44,19 +44,18 @@ y_train_bin = y_train
 y_train = np.identity(n=num_classes)[y_train]
 y_cv = np.identity(n=num_classes)[y_cv]
 
+np.random.seed(42)
 #MY MODEL
 features = X_train.shape[1]
 net = Sequential(input_dim=X_train.shape[1], layers=[
-    Sigmoid(64, name="layer1"),
-    Sigmoid(32, name="layer2"),
-    Sigmoid(24, name="layer3"),
-    Sigmoid(12, name="layer4"),
-    Sigmoid(2, name="layer5"),
+    ReLU(64, name="layer1"),
+    ReLU(32, name="layer2"),
+    Linear(2, name="layer3"),
     Softmax(2, name="output_layer")
 ])
 
 criterion = BinaryCrossEntropy()
-optimizer = Adam(net, lr=0.001)
+optimizer = Adam(net, lr=0.05)
 
 train_history = {"loss": [], "accuracy": []}
 val_history = {"loss": [], "accuracy": []}
@@ -64,7 +63,7 @@ val_history = {"loss": [], "accuracy": []}
 epochs = 100
 batch_size = 64
 m, n = X_train.shape
-early_stopping = EarlyStopping(net, min_delta=0.01, patience=5, verbose=True, restore_best_weights=True, start_from_epoch=5)
+early_stopping = EarlyStopping(net, min_delta=0.01, patience=10, verbose=True, restore_best_weights=True, start_from_epoch=5)
 parameters = net.parameters()
 
 #TRAINING
@@ -102,8 +101,10 @@ for epoch in range(epochs):
     
     print(f"Epoch {epoch} | {after_train_time - before_train_time:2f}s | train loss: {epoch_loss} | validation loss: {val_loss}")   
     #EARLY STOPPING
+    
     if early_stopping(epoch_loss):
         break
+    optimizer.t += 1
     
 loss_history = train_history["loss"]
 val_loss_history = val_history["loss"]
