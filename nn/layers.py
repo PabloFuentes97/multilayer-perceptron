@@ -2,7 +2,7 @@ import numpy as np
 from . import kernel_initializers as kernel
 
 class Layer:
-    def __init__(self, units, regularizer=None, name=None):
+    def __init__(self, units=None, regularizer=None, name=None):
         self.units = units
         self.name = name
         self.regularizer = regularizer
@@ -43,7 +43,7 @@ def sigmoid_deriv(z):
     return sig * (1 - sig)
 
 class Dense(Layer):
-    def __init__(self, units, regularizer=None, name=None):
+    def __init__(self, units=None, regularizer=None, name=None):
         self.units = units
         self.params = []
         self.grads = []

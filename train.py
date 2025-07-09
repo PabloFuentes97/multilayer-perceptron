@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from nn.train_test_split import *
-from nn.models import Sequential
+from nn.models import Sequential, save, load
 from nn.layers import Sigmoid, ReLU, Linear, Softmax
 from nn.loss import BinaryCrossEntropy
 from nn.optimizers import RMSProp, Adam
@@ -50,66 +50,26 @@ features = X_train.shape[1]
 net = Sequential(input_dim=X_train.shape[1], layers=[
     ReLU(64, name="layer1"),
     ReLU(32, name="layer2"),
-    Linear(2, name="layer3"),
+    ReLU(16, name="layer3"),
+    Linear(2, name="layer4"),
     Softmax(2, name="output_layer")
 ])
 
 criterion = BinaryCrossEntropy()
 optimizer = Adam(net, lr=0.05)
+metrics = {"accuracy": categorical_accuracy}
 
-train_history = {"loss": [], "accuracy": []}
-val_history = {"loss": [], "accuracy": []}
-
-epochs = 100
-batch_size = 64
 m, n = X_train.shape
 early_stopping = EarlyStopping(net, min_delta=0.01, patience=10, verbose=True, restore_best_weights=True, start_from_epoch=5)
 parameters = net.parameters()
+net.compile(criterion, optimizer, metrics)
 
-#TRAINING
-for epoch in range(epochs):
-    mini_batches = create_minibatches(X_train, y_train, batch_size)
-    mini_batches_num = len(mini_batches)
-    epoch_loss = 0
-    epoch_acc = 0
-    before_train_time = time.time()
-    for batch_x, batch_y in mini_batches:    
-        y_probs = net.forward(batch_x)
-        loss = criterion(y_probs, batch_y)
-        grad_loss = criterion.grad_loss(y_probs, batch_y)
-        net.backward(grad_loss)
-        optimizer.update()
-        y_pred = y_probs.argmax(axis=1)
-        batch_y_bin = batch_y.argmax(axis=1)
-        epoch_loss += loss
-        epoch_acc += accuracy(y_pred, batch_y_bin)
+history = net.fit(X_train, y_train, epochs=100, batch_size=64, validation=True, validation_data=(X_cv, y_cv), validation_batch_size=32, verbose=1)
 
-    after_train_time = time.time()   
-    epoch_loss /= mini_batches_num 
-    epoch_acc /= mini_batches_num
-    train_history["loss"].append(epoch_loss)
-    train_history["accuracy"].append(epoch_acc)
-
-    #VALIDATION
-    y_probs_val = net.forward(X_cv)
-    val_loss = criterion(y_probs_val, y_cv)
-    y_pred_val = y_probs_val.argmax(axis=1)
-    y_cv_bin = y_cv.argmax(axis=1)
-    val_acc = accuracy(y_pred_val, y_cv_bin)
-    val_history["loss"].append(val_loss)
-    val_history["accuracy"].append(val_acc)
-    
-    print(f"Epoch {epoch} | {after_train_time - before_train_time:2f}s | train loss: {epoch_loss} | validation loss: {val_loss}")   
-    #EARLY STOPPING
-    
-    if early_stopping(epoch_loss):
-        break
-    optimizer.t += 1
-    
-loss_history = train_history["loss"]
-val_loss_history = val_history["loss"]
-acc_history = train_history["accuracy"]
-val_acc_history = val_history["accuracy"]
+loss_history = history.train["loss"]
+val_loss_history = history.validation["loss"]
+acc_history = history.train["accuracy"]
+val_acc_history = history.validation["accuracy"]
 
 print("Train Loss after training:", loss_history[-1])
 print("Validation Loss after training:", val_loss_history[-1])
@@ -166,4 +126,4 @@ plt.title("Precision-Recall curve")
 plt.show()
 
 #SERIALIZE MODEL
-joblib.dump(net, "model")
+save(net, "my_model")

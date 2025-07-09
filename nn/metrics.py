@@ -5,6 +5,12 @@ import copy
 def accuracy(y_pred, y_true):
     return (y_pred == y_true).mean() * 100
 
+def categorical_accuracy(y_probs, y_true):
+   y_pred = np.argmax(y_probs, axis=1)
+   y_true = np.argmax(y_true, axis=1)
+   
+   return accuracy(y_pred, y_true)
+
 def find_TP(y_pred, y_true):
    # counts the number of true positives (y = 1, y_hat = 1)
    return np.sum((y_true == 1) & (y_pred == 1))

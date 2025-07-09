@@ -1,10 +1,9 @@
 import numpy as np 
 
 class SGD:
-    def __init__(self, net, lr=0.01, epochs=1000, batch_size=32, tolerance=0.0001, lambda_=None):
+    def __init__(self, net, lr=0.01, batch_size=32, tolerance=0.0001, lambda_=None):
         self.net = net
         self.lr = lr
-        self.epochs = epochs
         self.tolerance = tolerance
         
     def update(self):
@@ -98,7 +97,6 @@ class Adam: #Adaptive Moment Estimation
             layer.SdB = self.beta2 * layer.SdB + (1 - self.beta2) * (layer.db ** 2)
             
             #Bias correction -> compensar arranque lento
-            
             VdW_hat = layer.VdW / (1.0 - self.beta1 ** (self.t + 1))
             VdB_hat = layer.VdB / (1.0 - self.beta1 ** (self.t + 1))
             SdW_hat = layer.SdW / (1.0 - self.beta2 ** (self.t + 1))
@@ -112,4 +110,4 @@ class Adam: #Adaptive Moment Estimation
                 self.lr * b_new
             )
             
-        #self.t += 1
+        self.t += 1
