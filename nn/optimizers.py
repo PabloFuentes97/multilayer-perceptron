@@ -1,7 +1,7 @@
 import numpy as np 
 
 class SGD:
-    def __init__(self, net, lr=0.01, batch_size=32, tolerance=0.0001, lambda_=None):
+    def __init__(self, net, lr=0.01, tolerance=0.0001, lambda_=None):
         self.net = net
         self.lr = lr
         self.tolerance = tolerance
