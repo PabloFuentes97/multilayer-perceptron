@@ -117,31 +117,45 @@ class Sequential:
     def predict(self, X):
         return self.forward(X)
     
-    def batch_step(self, X, y, type):
+    def train_batch_step(self, X, y):
         self.history.on_batch_begin()
         y_pred = self.forward(X)
         loss = self.criterion(y_pred, y)
         grad_loss = self.criterion.grad_loss(y_pred, y)
         self.backward(grad_loss)
         self.optimizer.update()
-        self.history.on_batch_end(y_pred, y, loss, type)
+        self.history.on_batch_end(y_pred, y, loss, "train")
         
-    def epoch_step(self, X, y, batch_size, type):
+    def train_epoch_step(self, X, y, batch_size):
         mini_batches = create_minibatches(X, y, batch_size)
         mini_batches_num = len(mini_batches)
         for batch_x, batch_y in mini_batches:    
-            self.batch_step(batch_x, batch_y, type)
+            self.train_batch_step(batch_x, batch_y)
         
         return mini_batches_num
     
+    def validation_batch_step(self, X, y):
+        self.history.on_batch_begin()
+        y_pred = self.forward(X)
+        loss = self.criterion(y_pred, y)
+        self.history.on_batch_end(y_pred, y, loss, "validation")
+        
+    def validation_epoch_step(self, X, y, batch_size):
+        mini_batches = create_minibatches(X, y, batch_size)
+        mini_batches_num = len(mini_batches)
+        for batch_x, batch_y in mini_batches:    
+            self.validation_batch_step(batch_x, batch_y)
+        
+        return mini_batches_num
+
     def train_epoch(self, X, y, batch_size):
         self.history.on_train_epoch_begin()
-        minibatches_num = self.epoch_step(X, y, batch_size, "train")
+        minibatches_num = self.train_epoch_step(X, y, batch_size)
         self.history.on_train_epoch_end(minibatches_num)
         
     def validation_epoch(self, X, y, batch_size):
         self.history.on_validation_epoch_begin()
-        minibatches_num = self.epoch_step(X, y, batch_size, "validation")
+        minibatches_num = self.validation_epoch_step(X, y, batch_size)
         self.history.on_validation_epoch_end(minibatches_num)
             
     def fit(self, X, y, epochs=100, batch_size=32, validation=None, validation_data=None, validation_batch_size=0, verbose=0, early_stopping=None):
@@ -166,7 +180,7 @@ class Sequential:
                 print(f"Epoch {epoch} | {after_train_time - before_train_time:2f}s | train loss: {self.history.train['loss'][-1]} | validation loss: {self.history.validation['loss'][-1]}")   
             
             #early_stopping
-            if early_stopping and early_stopping(self.history.train["loss"]):
+            if early_stopping and early_stopping(self.history.train["loss"][-1]):
                 break
         
         self.history.on_train_end()
