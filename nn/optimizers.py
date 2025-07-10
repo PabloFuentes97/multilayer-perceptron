@@ -20,19 +20,6 @@ class SGDMomentum:
         self.tolerance = tolerance
         self.beta = beta
     
-    def init_velocity(self, params):
-        self.vdW = []
-        self.vdb = []
-        
-        layers = params // 2
-        for l in range(0, layers):
-            w_i, b_i = params[l]
-            vdW_i = np.zeros(shape=w_i.shape)
-            vdb_i = np.zeros(shape=b_i.shape)
-            self.vdW.append(vdW_i)
-            self.vdb.append(vdb_i)
-    
-
     def update(self):
         for layer in self.net.layers:
             if not hasattr(layer, "VdW"):

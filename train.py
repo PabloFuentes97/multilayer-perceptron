@@ -4,15 +4,12 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from nn.train_test_split import *
 from nn.models import Sequential, save, load
-from nn.layers import Sigmoid, ReLU, Linear, Softmax
+from nn.layers import ReLU, Linear, Softmax
 from nn.loss import BinaryCrossEntropy
-from nn.optimizers import RMSProp, Adam
-from nn.create_minibatches import *
+from nn.optimizers import Adam
 from nn.metrics import *
 from nn.callbacks import EarlyStopping
 import seaborn as sns
-import time
-import joblib
 import sys
 
 #CHECK ARGS
@@ -97,7 +94,11 @@ y_train = y_train_bin
 y_probs = net.predict(X_train)
 y_true_prob = y_probs[:, 1]
 y_pred = y_probs.argmax(axis=1)
+precision = precision_score(y_pred, y_train)
+recall = recall_score(y_pred, y_train)
 f1 = f1_score(y_pred, y_train)
+print("Precision score:", precision)
+print("Recall score:", recall)
 print("f1 score:", f1)
 
 #ROC CURVE
@@ -105,7 +106,7 @@ fpr, tpr, _ = roc_curve(y_true_prob, y_train)
 auc_ = auc(fpr, tpr)
 print("my auc:", auc_)
 plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (area = {auc_:.2f})', clip_on=False)
-plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', label='No Skill')
 plt.xlim([0, 1])
 plt.ylim([0, 1.05])
 plt.xlabel("FPR")
@@ -116,12 +117,12 @@ plt.show()
 #PRECISION-RECALL CURVE
 no_skill = len(y_train[y_train == 1]) / len(y_train)
 precision, recall,  _ = precision_recall_curve(y_true_prob, y_train)
-plt.plot(precision, recall, color='darkorange', lw=2)
+plt.plot(recall, precision, color='darkorange', lw=2)
 plt.plot([0, 1], [no_skill, no_skill], linestyle='--', label='No Skill')
 plt.xlim([0, 1])
 plt.ylim([0, 1.05])
-plt.xlabel("Precision")
-plt.ylabel("Recall")
+plt.xlabel("Recall")
+plt.ylabel("Precision")
 plt.title("Precision-Recall curve")
 plt.show()
 
