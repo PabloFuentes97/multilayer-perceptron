@@ -39,7 +39,33 @@ def load(filename):
         
     return net
 
-class Sequential:
+def create_net_from_file(filename):
+    with open(filename, 'r') as fp:
+        info = json.load(fp)
+
+    net = Sequential(init=False)
+    net.input_dim = info["input_dim"]
+    for layer_info in info["layers"]:
+        layer_type = globals()[layer_info['activation']]
+        layer = layer_type(units=layer_info['units'])
+        net.add_layer(layer)
+    
+    net.optimizer = info["optimizers"]
+    net.loss = info["loss"]
+
+    info_metrics = info["metrics"]
+    for metric_name, metric_func in info_metrics:
+        info_metrics[metric_name] = globals()[metric_func]
+    net.metrics = info_metrics
+
+    return net
+
+class Model:
+    def __init__(self):
+        pass
+
+
+class Sequential(Model):
     def __init__(self, input_dim=0, layers=[], init=True):
         self.input_dim = input_dim
         self.layers = layers

@@ -49,6 +49,7 @@ class Dense(Layer):
         self.grads = []
         self.name = name
         self.regularizer = regularizer
+        self.init_params = False
 
 class Linear(Dense):        
     def forward(self, X):

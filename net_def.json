@@ -1,0 +1,30 @@
+{
+    "layers": [
+        {
+            "activation": "ReLU",
+            "units": 64,
+            "name": "layer1"
+        },
+        {
+            "activation": "ReLU",
+            "units": 32,
+            "name": "layer2"
+        }, 
+        {
+            "activation": "Linear",
+            "units": 2,
+            "name": "layer3"
+        },
+        {
+            "activation": "Softmax",
+            "units": 2,
+            "name": "output_layer"
+        }
+    ],
+    "input_dim": 31,
+    "loss": "BinaryCrossEntropy",
+    "optimizer": "Adam",
+    "metrics": [
+        {"accuracy": "categorical_accuracy"}
+    ]
+}

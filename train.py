@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from nn.train_test_split import *
-from nn.models import Sequential, save, load
+from nn.models import *
 from nn.layers import ReLU, Linear, Softmax
 from nn.loss import BinaryCrossEntropy
 from nn.optimizers import Adam
@@ -44,10 +44,11 @@ y_cv = np.identity(n=num_classes)[y_cv]
 np.random.seed(42)
 #MY MODEL
 features = X_train.shape[1]
+
+'''
 net = Sequential(input_dim=X_train.shape[1], layers=[
     ReLU(64, name="layer1"),
     ReLU(32, name="layer2"),
-    ReLU(16, name="layer3"),
     Linear(2, name="layer4"),
     Softmax(2, name="output_layer")
 ])
@@ -55,11 +56,12 @@ net = Sequential(input_dim=X_train.shape[1], layers=[
 criterion = BinaryCrossEntropy()
 optimizer = Adam(net, lr=0.05)
 metrics = {"accuracy": categorical_accuracy}
+'''
 
-m, n = X_train.shape
+net = create_net_from_file("net_def.json")
+
 early_stopping = EarlyStopping(net, min_delta=0.01, patience=10, verbose=True, restore_best_weights=True, start_from_epoch=5)
-parameters = net.parameters()
-net.compile(criterion, optimizer, metrics)
+#net.compile(criterion, optimizer, metrics)
 
 history = net.fit(X_train, y_train, epochs=100, batch_size=64, validation=True, validation_data=(X_cv, y_cv), validation_batch_size=32, verbose=1)
 
