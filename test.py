@@ -23,7 +23,8 @@ except FileNotFoundError:
 
 dataset[1] = [1 if result == "M" else 0 for result in dataset[1]]
 
-X_test = dataset.drop(columns=[0, 10, 12, 15, 19, 20]).to_numpy()
+#X_test = dataset.drop(columns=[0, 10, 12, 15, 19, 20]).to_numpy()
+X_test = dataset[[2, 3, 4, 5, 6, 7, 8, 22, 24, 28]].to_numpy()
 y_test = dataset[1].to_numpy()
 y_test_onehot = np.identity(2)[y_test]
 
@@ -62,16 +63,4 @@ plt.ylim([0, 1.05])
 plt.xlabel("FPR")
 plt.ylabel("TPR")
 plt.title("ROC curve")
-plt.show()
-
-#PRECISION-RECALL CURVE
-no_skill = len(y_test[y_test == 1]) / len(y_test)
-precision, recall,  _ = precision_recall_curve(y_true_prob, y_test)
-plt.plot(recall, precision, color='darkorange', lw=2)
-plt.plot([0, 1], [no_skill, no_skill], linestyle='--', label='No Skill')
-plt.xlim([0, 1])
-plt.ylim([0, 1.05])
-plt.xlabel("Recall")
-plt.ylabel("Precision")
-plt.title("Precision-Recall curve")
 plt.show()

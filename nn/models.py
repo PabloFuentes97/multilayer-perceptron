@@ -2,9 +2,10 @@ import numpy as np
 from .train_test_split import train_test_split
 from .create_minibatches import create_minibatches
 from .layers import *
+from .loss import *
+from .optimizers import *
+from .metrics import *
 from .history import History
-from .metrics import accuracy
-from pydoc import locate
 import time
 import json
 
@@ -43,20 +44,19 @@ def create_net_from_file(filename):
     with open(filename, 'r') as fp:
         info = json.load(fp)
 
-    net = Sequential(init=False)
-    net.input_dim = info["input_dim"]
+    layers = []
     for layer_info in info["layers"]:
         layer_type = globals()[layer_info['activation']]
         layer = layer_type(units=layer_info['units'])
-        net.add_layer(layer)
-    
-    net.optimizer = info["optimizers"]
-    net.loss = info["loss"]
+        layers.append(layer)
+    net = Sequential(input_dim=info["input_dim"], layers=layers)
 
+    optimizer = globals()[info["optimizer"]](net, info["lr"])
+    loss = globals()[info["loss"]]()
     info_metrics = info["metrics"]
-    for metric_name, metric_func in info_metrics:
+    for metric_name, metric_func in info_metrics.items():
         info_metrics[metric_name] = globals()[metric_func]
-    net.metrics = info_metrics
+    net.compile(loss, optimizer, info_metrics)
 
     return net
 

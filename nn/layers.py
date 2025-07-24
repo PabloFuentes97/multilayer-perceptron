@@ -49,7 +49,6 @@ class Dense(Layer):
         self.grads = []
         self.name = name
         self.regularizer = regularizer
-        self.init_params = False
 
 class Linear(Dense):        
     def forward(self, X):
@@ -60,7 +59,7 @@ class Linear(Dense):
     def backward(self, grad_output):
         # Gradientes de los parámetros
         self.dw = np.dot(self.X.T, grad_output)  # dC/dw = dC/dz * dz/dw
-        self.db = np.sum(grad_output)    # dC/db = dC/dz * dz/db
+        self.db = np.sum(grad_output, axis=0, keepdims=True)    # dC/db = dC/dz * dz/db
         self.grads = [self.dw, self.db]
         # Gradiente para las entradas (para la capa anterior)
         grad_input = np.dot(grad_output, self.weights.T)  # dC/dX = dC/dz * dz/dX
@@ -68,7 +67,7 @@ class Linear(Dense):
     
     def init_params(self, d_in, d_out):
         self.weights = kernel.he_initialization(d_in, d_out)
-        self.bias = np.zeros(1)
+        self.bias = np.zeros((1, d_out))
         self.params = [self.weights, self.bias]
     
     def update(self, w, b):
@@ -87,14 +86,14 @@ class ReLU(Dense):
         relu_grad = np.where(self.z > 0, 1, 0)
         grad_z = grad_output * relu_grad
         self.dw = np.dot(self.X.T, grad_z)
-        self.db = np.sum(grad_z)
+        self.db = np.sum(grad_z, axis=0, keepdims=True)
         self.grads = [self.dw, self.db]
         grad_input = np.dot(grad_z, self.weights.T)
         return grad_input
     
     def init_params(self, d_in, d_out):
         self.weights = kernel.he_initialization(d_in, d_out)
-        self.bias = np.zeros(1)
+        self.bias = np.zeros((1, d_out))
         self.params = [self.weights, self.bias]
     
     def update(self, w, b):

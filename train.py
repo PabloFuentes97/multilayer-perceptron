@@ -28,7 +28,8 @@ except FileNotFoundError:
 
 dataset[1] = [1 if result == "M" else 0 for result in dataset[1]]
 
-X = dataset.drop(columns=[0, 10, 12, 15, 19, 20]).to_numpy()
+#X = dataset.drop(columns=[0, 10, 12, 15, 19, 20]).to_numpy()
+X = dataset[[2, 3, 4, 5, 6, 7, 8, 22, 24, 28]].to_numpy()
 y = dataset[1].to_numpy()
 
 #SPLIT DATA
@@ -40,6 +41,8 @@ X_train, X_cv, y_train, y_cv = train_test_split(Xn, y, train_size=0.8)
 y_train_bin = y_train
 y_train = np.identity(n=num_classes)[y_train]
 y_cv = np.identity(n=num_classes)[y_cv]
+
+m, n = X_train.shape
 
 np.random.seed(42)
 #MY MODEL
@@ -61,7 +64,6 @@ metrics = {"accuracy": categorical_accuracy}
 net = create_net_from_file("net_def.json")
 
 early_stopping = EarlyStopping(net, min_delta=0.01, patience=10, verbose=True, restore_best_weights=True, start_from_epoch=5)
-#net.compile(criterion, optimizer, metrics)
 
 history = net.fit(X_train, y_train, epochs=100, batch_size=64, validation=True, validation_data=(X_cv, y_cv), validation_batch_size=32, verbose=1)
 
@@ -114,18 +116,6 @@ plt.ylim([0, 1.05])
 plt.xlabel("FPR")
 plt.ylabel("TPR")
 plt.title("ROC curve")
-plt.show()
-
-#PRECISION-RECALL CURVE
-no_skill = len(y_train[y_train == 1]) / len(y_train)
-precision, recall,  _ = precision_recall_curve(y_true_prob, y_train)
-plt.plot(recall, precision, color='darkorange', lw=2)
-plt.plot([0, 1], [no_skill, no_skill], linestyle='--', label='No Skill')
-plt.xlim([0, 1])
-plt.ylim([0, 1.05])
-plt.xlabel("Recall")
-plt.ylabel("Precision")
-plt.title("Precision-Recall curve")
 plt.show()
 
 #SERIALIZE MODEL
