@@ -1,15 +1,20 @@
 {
-    "input_dim": 10,
+    "input_dim": 26,
     "layers": [
         {
             "activation": "ReLU",
-            "units": 16,
+            "units": 256,
             "name": "layer1"
         },
         {
             "activation": "ReLU",
-            "units": 8,
+            "units": 128,
             "name": "layer2"
+        },
+        {
+            "activation": "Linear",
+            "units": 64,
+            "name": "layer3"
         },
         {
             "activation": "Linear",
@@ -22,8 +27,8 @@
             "name": "output_layer"
         }
     ],
-    "loss": "CategoricalCrossEntropy",
+    "loss": "BinaryCrossEntropy",
     "optimizer": "Adam",
-    "lr": 0.05,
+    "lr": 0.001,
     "metrics": {"accuracy": "categorical_accuracy"}
 }

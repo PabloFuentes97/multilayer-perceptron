@@ -1,7 +1,7 @@
 import numpy as np
 
 class EarlyStopping:
-    def __init__(self, net, min_delta=0, patience=0, verbose=0, restore_best_weights=False, start_from_epoch=0):
+    def __init__(self, net, min_delta=0.01, patience=10, verbose=0, restore_best_weights=False, start_from_epoch=0):
         self.net = net
         self.min_delta = min_delta
         self.patience = patience
@@ -23,7 +23,7 @@ class EarlyStopping:
             return False
 
         # Check for improvement
-        if loss < self.best_loss - self.min_delta:
+        if loss < (self.best_loss - self.min_delta):
             self.best_loss = loss
             self.patience_counter = 0
             if self.restore_best_weights:
@@ -38,7 +38,9 @@ class EarlyStopping:
                 if self.restore_best_weights:
                     self.net.set_weights(self.best_weights)
                     self.net.set_bias(self.best_bias)
-                    return True
+                return True
+            
+        return False
         
         
 

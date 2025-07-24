@@ -15,11 +15,6 @@ class Layer:
     
     def update(self, params):
         return
-
-    def init_params(self, d_in, d_out):
-        self.weights = self.kernel_initializer(d_in, d_out)
-        self.bias = np.zeros(1)
-        self.params = [self.weights, self.bias]
         
     def get_weights(self):
         return self.weights

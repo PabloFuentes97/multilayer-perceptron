@@ -144,70 +144,111 @@ class Sequential(Model):
         return self.forward(X)
     
     def train_batch_step(self, X, y):
-        self.history.on_batch_begin()
+        batch_metrics = {}
+        batch_size = len(X)
+        
         y_pred = self.forward(X)
         loss = self.criterion(y_pred, y)
+        batch_metrics["loss"] = loss * batch_size
         grad_loss = self.criterion.grad_loss(y_pred, y)
         self.backward(grad_loss)
         self.optimizer.update()
-        self.history.on_batch_end(y_pred, y, loss, "train")
+        
+        if self.metrics:
+            for metric_name, metric_func in self.metrics.items():
+                batch_metrics[metric_name] = metric_func(y_pred, y) * batch_size
+        
+        return batch_metrics
         
     def train_epoch_step(self, X, y, batch_size):
-        mini_batches = create_minibatches(X, y, batch_size)
-        mini_batches_num = len(mini_batches)
-        for batch_x, batch_y in mini_batches:    
-            self.train_batch_step(batch_x, batch_y)
+        epoch_metrics = {"loss": 0}
+        if self.metrics:
+            for metric_name in self.metrics:
+                epoch_metrics[metric_name] = 0
         
-        return mini_batches_num
+        m = len(X)
+        mini_batches = create_minibatches(X, y, batch_size)
+        
+        for batch_x, batch_y in mini_batches:    
+            batch_metrics = self.train_batch_step(batch_x, batch_y)
+            for metric_name, metric_value in batch_metrics.items():
+                epoch_metrics[metric_name] += metric_value
+        
+        #weighted average of batch metrics
+        for metric_name in epoch_metrics:
+            epoch_metrics[metric_name] /= m
+        
+        return epoch_metrics
+
     
     def validation_batch_step(self, X, y):
-        self.history.on_batch_begin()
+        batch_metrics = {}
+        
+        batch_size = len(X)
         y_pred = self.forward(X)
         loss = self.criterion(y_pred, y)
-        self.history.on_batch_end(y_pred, y, loss, "validation")
+        batch_metrics["loss"] = loss * batch_size
         
-    def validation_epoch_step(self, X, y, batch_size):
-        mini_batches = create_minibatches(X, y, batch_size)
-        mini_batches_num = len(mini_batches)
-        for batch_x, batch_y in mini_batches:    
-            self.validation_batch_step(batch_x, batch_y)
+        if self.metrics:
+            for metric_name, metric_func in self.metrics.items():
+                batch_metrics[metric_name] = metric_func(y_pred, y) * batch_size
         
-        return mini_batches_num
-
-    def train_epoch(self, X, y, batch_size):
-        self.history.on_train_epoch_begin()
-        minibatches_num = self.train_epoch_step(X, y, batch_size)
-        self.history.on_train_epoch_end(minibatches_num)
+        return batch_metrics
         
-    def validation_epoch(self, X, y, batch_size):
-        self.history.on_validation_epoch_begin()
-        minibatches_num = self.validation_epoch_step(X, y, batch_size)
-        self.history.on_validation_epoch_end(minibatches_num)
+    def validation_epoch_step(self, X, y):
+        epoch_metrics = {}
+        
+        y_pred = self.forward(X)
+        loss = self.criterion(y_pred, y)
+        epoch_metrics["loss"] = loss
             
-    def fit(self, X, y, epochs=100, batch_size=32, validation=None, validation_data=None, validation_batch_size=0, verbose=0, early_stopping=None):
-        self.history = History(self.metrics)
-        self.history.on_train_begin()
+        if self.metrics:
+            for metric_name, metric_func in self.metrics.items():
+                epoch_metrics[metric_name] = metric_func(y_pred, y)
+            
+        return epoch_metrics 
+    
+            
+    def fit(self, X, y, epochs=100, batch_size=32, validation=None, validation_data=None, verbose=0, early_stopping=None):
+        history = { "train": {
+                "loss": [] }
+        }
+        
+        if self.metrics:
+            for metric_name in self.metrics:
+                history["train"][metric_name] = []
         
         if validation:
             X_cv, y_cv = validation_data
+            history["validation"] = {
+                "loss": []
+            }
+            if self.metrics:
+                for metric_name in self.metrics:
+                    history["validation"][metric_name] = []
         
         for epoch in range(epochs):
             #training
             before_train_time = time.time()
-            self.train_epoch(X, y, batch_size)
-            after_train_time = time.time()   
+            epoch_metrics = self.train_epoch_step(X, y, batch_size)
+            after_train_time = time.time()
+            for metric_name, metric_value in epoch_metrics.items():
+                history["train"][metric_name].append(metric_value)
 
-            #validation
-            if validation:
-                self.validation_epoch(X_cv, y_cv, batch_size=validation_batch_size)
-            
             #verbose
             if verbose > 0 and epoch % verbose == 0:
-                print(f"Epoch {epoch} | {after_train_time - before_train_time:2f}s | train loss: {self.history.train['loss'][-1]} | validation loss: {self.history.validation['loss'][-1]}")   
+                print(f"Epoch {epoch} | {after_train_time - before_train_time:2f}s | train loss: {history['train']['loss'][-1]}", end="")
+                if self.metrics and self.metrics["accuracy"]:
+                    print(f" | train accuracy: {history['train']['accuracy'][-1]}")
+            
+            #validation
+            if validation:
+                epoch_metrics = self.validation_epoch_step(X_cv, y_cv)
+                for metric_name, metric_value in epoch_metrics.items():
+                    history["validation"][metric_name].append(metric_value)
             
             #early_stopping
-            if early_stopping and early_stopping(self.history.train["loss"][-1]):
+            if early_stopping and early_stopping(history["train"]["loss"][-1]):
                 break
         
-        self.history.on_train_end()
-        return self.history
+        return history

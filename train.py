@@ -4,9 +4,6 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from nn.train_test_split import *
 from nn.models import *
-from nn.layers import ReLU, Linear, Softmax
-from nn.loss import BinaryCrossEntropy
-from nn.optimizers import Adam
 from nn.metrics import *
 from nn.callbacks import EarlyStopping
 import seaborn as sns
@@ -28,8 +25,7 @@ except FileNotFoundError:
 
 dataset[1] = [1 if result == "M" else 0 for result in dataset[1]]
 
-#X = dataset.drop(columns=[0, 10, 12, 15, 19, 20]).to_numpy()
-X = dataset[[2, 3, 4, 5, 6, 7, 8, 22, 24, 28]].to_numpy()
+X = dataset.drop(columns=[0, 10, 12, 15, 19, 20]).to_numpy()
 y = dataset[1].to_numpy()
 
 #SPLIT DATA
@@ -42,35 +38,18 @@ y_train_bin = y_train
 y_train = np.identity(n=num_classes)[y_train]
 y_cv = np.identity(n=num_classes)[y_cv]
 
-m, n = X_train.shape
-
 np.random.seed(42)
-#MY MODEL
-features = X_train.shape[1]
-
-'''
-net = Sequential(input_dim=X_train.shape[1], layers=[
-    ReLU(64, name="layer1"),
-    ReLU(32, name="layer2"),
-    Linear(2, name="layer4"),
-    Softmax(2, name="output_layer")
-])
-
-criterion = BinaryCrossEntropy()
-optimizer = Adam(net, lr=0.05)
-metrics = {"accuracy": categorical_accuracy}
-'''
 
 net = create_net_from_file("net_def.json")
 
-early_stopping = EarlyStopping(net, min_delta=0.01, patience=10, verbose=True, restore_best_weights=True, start_from_epoch=5)
+early_stopping = EarlyStopping(net, min_delta=0.001, patience=20, verbose=True, restore_best_weights=True, start_from_epoch=5)
 
-history = net.fit(X_train, y_train, epochs=100, batch_size=64, validation=True, validation_data=(X_cv, y_cv), validation_batch_size=32, verbose=1)
+history = net.fit(X_train, y_train, epochs=200, batch_size=16, validation=True, validation_data=(X_cv, y_cv), verbose=1)
 
-loss_history = history.train["loss"]
-val_loss_history = history.validation["loss"]
-acc_history = history.train["accuracy"]
-val_acc_history = history.validation["accuracy"]
+loss_history = history["train"]["loss"]
+val_loss_history = history["validation"]["loss"]
+acc_history = history["train"]["accuracy"]
+val_acc_history = history["validation"]["accuracy"]
 
 print("Train Loss after training:", loss_history[-1])
 print("Validation Loss after training:", val_loss_history[-1])

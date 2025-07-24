@@ -65,6 +65,7 @@ class Adam: #Adaptive Moment Estimation
        
     def update(self):
         epsilon = 1e-8
+        self.t += 1
         for layer in self.net.layers:
             if not hasattr(layer, "VdW"):
                 layer.VdW = np.zeros(shape=layer.weights.shape)
@@ -84,10 +85,10 @@ class Adam: #Adaptive Moment Estimation
             layer.SdB = self.beta2 * layer.SdB + (1 - self.beta2) * (layer.db ** 2)
             
             #Bias correction -> compensar arranque lento
-            VdW_hat = layer.VdW / (1.0 - self.beta1 ** (self.t + 1))
-            VdB_hat = layer.VdB / (1.0 - self.beta1 ** (self.t + 1))
-            SdW_hat = layer.SdW / (1.0 - self.beta2 ** (self.t + 1))
-            SdB_hat = layer.SdB / (1.0 - self.beta2 ** (self.t + 1))
+            VdW_hat = layer.VdW / (1.0 - self.beta1 ** (self.t))
+            VdB_hat = layer.VdB / (1.0 - self.beta1 ** (self.t))
+            SdW_hat = layer.SdW / (1.0 - self.beta2 ** (self.t))
+            SdB_hat = layer.SdB / (1.0 - self.beta2 ** (self.t))
             
             w_new = VdW_hat / (np.sqrt(SdW_hat) + epsilon) #Momentum / RMSProp
             b_new = VdB_hat / (np.sqrt(SdB_hat) + epsilon)
@@ -96,5 +97,3 @@ class Adam: #Adaptive Moment Estimation
                 self.lr * w_new, 
                 self.lr * b_new
             )
-            
-        self.t += 1
