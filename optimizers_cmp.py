@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from nn.optimizers import *
-from nn.models import Sequential
+from nn.models import *
 from nn.layers import ReLU, Linear, Softmax
 from nn.loss import BinaryCrossEntropy
 import matplotlib.pyplot as plt
@@ -24,7 +24,7 @@ except FileNotFoundError:
 
 dataset[1] = [1 if result == "M" else 0 for result in dataset[1]]
 
-X = dataset.drop(columns=[1]).to_numpy()
+X = dataset.drop(columns=[0, 10, 12, 15, 19, 20]).to_numpy()
 y = dataset[1].to_numpy()
 
 #SPLIT DATA
@@ -48,18 +48,12 @@ optimizers = [
 optims_history = []
 i = 0
 for optim_type in optimizers:
-    model = Sequential(input_dim=X.shape[1], layers=[
-        ReLU(64, name="layer1"),
-        ReLU(32, name="layer2"),
-        ReLU(16, name="layer3"),
-        Linear(2, name="layer4"),
-        Softmax(2, name="output_layer")
-    ])
+    model = create_net_from_file("net_def.json")
     optim = optim_type(model)
     model.compile(criterion, optim)
     history = model.fit(Xn, y, epochs=100, batch_size=32, verbose=0)
-    if history.train["loss"][-1] < best_loss:
-        best_loss = history.train["loss"][-1]
+    if history["train"]["loss"][-1] < best_loss:
+        best_loss = history["train"]["loss"][-1]
         best_model = (i, model)
     optims_history.append(history)
     i += 1
@@ -69,7 +63,7 @@ colors = ["red", "blue", "green", "pink"]
 
 i = 0
 for hist in optims_history:
-    loss_history = hist.train["loss"]
+    loss_history = hist["train"]["loss"]
     plt.plot(list(range(len(loss_history))), loss_history, color=colors[i], alpha=0.6)
     i += 1
 
